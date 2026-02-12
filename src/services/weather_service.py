@@ -58,10 +58,13 @@ class WeatherService:
             return self.get_location(location_id)
             
         params.append(location_id)
-        query = f"UPDATE locations SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *"
-        cursor = self.db.execute(query, tuple(params))
-        row = cursor.fetchone()
+        query = f"UPDATE locations SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        self.db.execute(query, tuple(params))
         self.db.commit()
+        
+        # Fetch the updated record
+        cursor = self.db.execute("SELECT * FROM locations WHERE id = ?", (location_id,))
+        row = cursor.fetchone()
         return Location(**dict(row)) if row else None
 
     def delete_location(self, location_id: int) -> bool:

@@ -41,7 +41,7 @@ class WeatherSnapshot(BaseModel):
     clouds: int
     visibility: Optional[int]
     api_timestamp: int
-    timestamp: Optional[datetime]
+    timestamp: Optional[datetime] = None
 
 class ForecastItem(BaseModel):
     forecast_timestamp: int

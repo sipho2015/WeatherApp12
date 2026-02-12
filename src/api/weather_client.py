@@ -18,7 +18,9 @@ class WeatherAPIClient:
     @property
     def client(self) -> httpx.AsyncClient:
         if self._client is None:
-            self._client = httpx.AsyncClient(timeout=10.0)
+            # Increased timeout to 30s to handle slower satellite links
+            # trust_env=False prevents system proxy interference 
+            self._client = httpx.AsyncClient(timeout=30.0, trust_env=False)
         return self._client
 
     def set_client(self, client: httpx.AsyncClient):

@@ -108,6 +108,9 @@ async def sync_weather(
     try:
         current, forecast = await service.sync_weather(location_id)
         location = service.get_location(location_id)
+        if not location:
+            raise HTTPException(status_code=404, detail="Location record missing after sync")
+            
         last_synced = service.get_last_sync_time(location_id)
         return WeatherData(
             location=location,
@@ -118,7 +121,10 @@ async def sync_weather(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        print(f"Sync error: {str(e)}")
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Satellite sync failed: {str(e) or type(e).__name__}")
 
 @app.get("/locations/{location_id}/weather", response_model=WeatherData)
 async def get_weather_data(

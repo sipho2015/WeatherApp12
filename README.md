@@ -40,7 +40,8 @@ A modern, full-stack weather application that integrates with OpenWeatherMap API
    OPENWEATHER_API_KEY=your_actual_api_key_here
    ```
 5. Run the backend server:
-   ```.\venv\Scripts\python src/main.py
+   ```bash 
+   .\venv\Scripts\python src/main.py
    ```
    The API will be available at `http://localhost:8000`.
 
