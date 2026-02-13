@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS locations (
     latitude REAL NOT NULL,
     longitude REAL NOT NULL,
     is_favorite BOOLEAN DEFAULT 0,
+    is_deleted BOOLEAN DEFAULT 0,
     display_name VARCHAR(150),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -89,3 +90,4 @@ CREATE INDEX IF NOT EXISTS idx_sync_history_location_id ON sync_history(location
 INSERT OR IGNORE INTO user_preferences (key, value) VALUES ('units', 'metric');
 INSERT OR IGNORE INTO user_preferences (key, value) VALUES ('refresh_interval', '600');
 INSERT OR IGNORE INTO user_preferences (key, value) VALUES ('language', 'en');
+INSERT OR IGNORE INTO user_preferences (key, value) VALUES ('theme', 'dark');

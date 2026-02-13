@@ -1,9 +1,15 @@
 from typing import List, Optional, Tuple
 from datetime import datetime
 from src.db.database import Database
-from src.schemas.weather import Location, WeatherSnapshot, ForecastItem, LocationCreate, LocationUpdate
+from src.schemas.weather import (
+    Location,
+    WeatherSnapshot,
+    ForecastItem,
+    LocationCreate,
+    LocationUpdate,
+    LocationSearchResult,
+)
 from src.api.weather_client import WeatherAPIClient
-import json
 
 class WeatherService:
     def __init__(self, db: Database, api_client: WeatherAPIClient):
@@ -17,30 +23,77 @@ class WeatherService:
             raise ValueError(f"Location not found: {location_data.name}")
         
         best_match = geo_results[0]
-        
-        # 2. Store in DB
+
+        name = best_match["name"]
+        country = best_match["country"]
+        lat = best_match["lat"]
+        lon = best_match["lon"]
+
+        # 2. Reuse existing record if same city was previously soft-deleted.
+        existing_cursor = self.db.execute(
+            "SELECT * FROM locations WHERE name = ? AND country = ? LIMIT 1",
+            (name, country),
+        )
+        existing = existing_cursor.fetchone()
+        if existing:
+            self.db.execute(
+                """
+                UPDATE locations
+                SET latitude = ?, longitude = ?, display_name = ?, is_deleted = 0,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (lat, lon, name, existing["id"]),
+            )
+            self.db.commit()
+            row = self.db.execute(
+                "SELECT * FROM locations WHERE id = ? AND is_deleted = 0",
+                (existing["id"],),
+            ).fetchone()
+            return Location(**dict(row))
+
+        # 3. Store new location
         query = """
             INSERT INTO locations (name, country, latitude, longitude, display_name)
             VALUES (?, ?, ?, ?, ?)
             RETURNING *
         """
-        cursor = self.db.execute(query, (
-            best_match["name"],
-            best_match["country"],
-            best_match["lat"],
-            best_match["lon"],
-            best_match["name"]
-        ))
+        cursor = self.db.execute(query, (name, country, lat, lon, name))
         row = cursor.fetchone()
         self.db.commit()
         return Location(**dict(row))
 
+    async def search_locations(self, query: str, country: Optional[str] = None) -> List[LocationSearchResult]:
+        geo_results = await self.api_client.get_location_coords(query, country)
+        results: List[LocationSearchResult] = []
+        for item in geo_results:
+            display_name = f"{item['name']}, {item['country']}"
+            if item.get("state"):
+                display_name = f"{item['name']}, {item['state']}, {item['country']}"
+
+            results.append(
+                LocationSearchResult(
+                    name=item["name"],
+                    country=item["country"],
+                    state=item.get("state"),
+                    latitude=item["lat"],
+                    longitude=item["lon"],
+                    display_name=display_name,
+                )
+            )
+        return results
+
     def get_all_locations(self) -> List[Location]:
-        cursor = self.db.execute("SELECT * FROM locations ORDER BY is_favorite DESC, name ASC")
+        cursor = self.db.execute(
+            "SELECT * FROM locations WHERE is_deleted = 0 ORDER BY is_favorite DESC, name ASC"
+        )
         return [Location(**dict(row)) for row in cursor.fetchall()]
 
     def get_location(self, location_id: int) -> Optional[Location]:
-        cursor = self.db.execute("SELECT * FROM locations WHERE id = ?", (location_id,))
+        cursor = self.db.execute(
+            "SELECT * FROM locations WHERE id = ? AND is_deleted = 0",
+            (location_id,),
+        )
         row = cursor.fetchone()
         return Location(**dict(row)) if row else None
 
@@ -58,17 +111,30 @@ class WeatherService:
             return self.get_location(location_id)
             
         params.append(location_id)
-        query = f"UPDATE locations SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        query = (
+            f"UPDATE locations SET {', '.join(updates)}, updated_at = CURRENT_TIMESTAMP "
+            "WHERE id = ? AND is_deleted = 0"
+        )
         self.db.execute(query, tuple(params))
         self.db.commit()
         
         # Fetch the updated record
-        cursor = self.db.execute("SELECT * FROM locations WHERE id = ?", (location_id,))
+        cursor = self.db.execute(
+            "SELECT * FROM locations WHERE id = ? AND is_deleted = 0",
+            (location_id,),
+        )
         row = cursor.fetchone()
         return Location(**dict(row)) if row else None
 
     def delete_location(self, location_id: int) -> bool:
-        cursor = self.db.execute("DELETE FROM locations WHERE id = ?", (location_id,))
+        cursor = self.db.execute(
+            """
+            UPDATE locations
+            SET is_deleted = 1, is_favorite = 0, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND is_deleted = 0
+            """,
+            (location_id,),
+        )
         self.db.commit()
         return cursor.rowcount > 0
 
@@ -80,7 +146,14 @@ class WeatherService:
         # Get units preference
         cursor = self.db.execute("SELECT value FROM user_preferences WHERE key = 'units'")
         row = cursor.fetchone()
-        units = row["value"] if row else "metric"
+        # row may be a dict-like object; guard against missing 'value' key
+        units = "metric"
+        if row:
+            try:
+                units = row["value"]
+            except Exception:
+                # fallback to default if structure is unexpected
+                units = str(row) if isinstance(row, str) else units
         
         try:
             # Fetch current and forecast

@@ -10,6 +10,15 @@ export interface Location {
     updated_at: string;
 }
 
+export interface LocationSearchResult {
+    name: string;
+    country: string;
+    state?: string;
+    latitude: number;
+    longitude: number;
+    display_name: string;
+}
+
 export interface WeatherSnapshot {
     temperature: number;
     feels_like: number;

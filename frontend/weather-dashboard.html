@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Glass Weather Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./weather-dashboard.css" />
+</head>
+<body>
+  <div class="page-bg"></div>
+  <div class="overlay"></div>
+
+  <main class="dashboard-shell">
+    <aside class="sidebar glass">
+      <div class="sidebar-top">
+        <p class="app-label">Skyline</p>
+        <h1 class="app-title">Weather Studio</h1>
+      </div>
+
+      <section class="status-card glass-soft">
+        <div class="status-head">
+          <p class="status-title">Atmosphere Status</p>
+          <span class="pill">Stable</span>
+        </div>
+        <svg class="status-curve" viewBox="0 0 240 90" aria-hidden="true">
+          <defs>
+            <linearGradient id="curveGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#57cfff" />
+              <stop offset="100%" stop-color="#b8eeff" />
+            </linearGradient>
+          </defs>
+          <path d="M5 68 C 40 20, 80 85, 120 40 S 205 15, 235 54" fill="none" stroke="url(#curveGlow)" stroke-width="4" stroke-linecap="round" />
+        </svg>
+      </section>
+
+      <section class="map-card glass-soft">
+        <div class="map-preview">
+          <span class="dot dot-1"></span>
+          <span class="dot dot-2"></span>
+          <span class="dot dot-3"></span>
+          <span class="line line-1"></span>
+          <span class="line line-2"></span>
+        </div>
+        <p class="map-label">Live city mesh</p>
+      </section>
+
+      <div class="location-block">
+        <p class="location-kicker">Current city</p>
+        <p class="location-name">Nairobi, Kenya</p>
+      </div>
+    </aside>
+
+    <section class="main-panel glass">
+      <header class="top-row">
+        <div class="meta">
+          <p class="city">Brooklyn, New York</p>
+          <p class="date">Tuesday, February 13</p>
+        </div>
+        <div class="actions">
+          <button class="glass-btn icon-btn" aria-label="Search">
+            <span class="icon-search"></span>
+          </button>
+          <button class="glass-btn text-btn">Download App</button>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div class="hero-icon" aria-hidden="true">
+          <span class="sun"></span>
+          <span class="cloud"></span>
+        </div>
+        <div class="hero-copy">
+          <div class="temp-line">
+            <p class="temp-main">18°</p>
+            <p class="temp-small">11°</p>
+          </div>
+          <div class="temp-badges">
+            <span class="badge">H: 22°</span>
+            <span class="badge">L: 11°</span>
+          </div>
+          <p class="summary">A warmish day.</p>
+        </div>
+      </section>
+
+      <section class="forecast glass-soft">
+        <p class="forecast-title">Weekly Forecast</p>
+        <div class="chart-wrap">
+          <svg class="forecast-curve" viewBox="0 0 760 120" aria-hidden="true">
+            <path d="M10 86 C 95 36, 172 98, 255 58 S 420 28, 500 65 S 665 92, 750 42" fill="none" stroke="#6fd6ff" stroke-width="4" stroke-linecap="round" />
+            <circle cx="255" cy="58" r="10" class="active-node" />
+          </svg>
+        </div>
+        <div class="week-grid">
+          <div class="day">
+            <p class="day-name">Tomorrow</p>
+            <p class="day-weather">Rain</p>
+            <p class="day-temp">11° / 18°</p>
+          </div>
+          <div class="day active">
+            <p class="day-name">Wednesday</p>
+            <p class="day-weather">Sunny</p>
+            <p class="day-temp">8° / 10°</p>
+          </div>
+          <div class="day">
+            <p class="day-name">Thursday</p>
+            <p class="day-weather">Snow</p>
+            <p class="day-temp">14° / 13°</p>
+          </div>
+          <div class="day">
+            <p class="day-name">Friday</p>
+            <p class="day-weather">Cloudy</p>
+            <p class="day-temp">12° / 16°</p>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer-row">
+        <section class="sun-times glass-soft">
+          <div class="sun-box">
+            <span class="sun-icon"></span>
+            <div>
+              <p class="sun-label">Sunrise</p>
+              <p class="sun-time">06:24 AM</p>
+            </div>
+          </div>
+          <div class="sun-box">
+            <span class="sun-icon sunset"></span>
+            <div>
+              <p class="sun-label">Sunset</p>
+              <p class="sun-time">05:58 PM</p>
+            </div>
+          </div>
+        </section>
+        <section class="temps glass-soft">
+          <p>Indoor temp <strong>18°C</strong></p>
+          <p>Outdoor temp <strong>22°C</strong></p>
+        </section>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

@@ -16,6 +16,14 @@ class LocationUpdate(BaseModel):
     display_name: Optional[str] = None
     is_favorite: Optional[bool] = None
 
+class LocationSearchResult(BaseModel):
+    name: str
+    country: str
+    state: Optional[str] = None
+    latitude: float
+    longitude: float
+    display_name: str
+
 class Location(LocationBase):
     id: int
     display_name: Optional[str]
@@ -37,9 +45,9 @@ class WeatherSnapshot(BaseModel):
     weather_description: str
     weather_icon: str
     wind_speed: float
-    wind_deg: Optional[int]
+    wind_deg: Optional[int] = None
     clouds: int
-    visibility: Optional[int]
+    visibility: Optional[int] = None
     api_timestamp: int
     timestamp: Optional[datetime] = None
 
@@ -55,7 +63,7 @@ class ForecastItem(BaseModel):
     weather_description: str
     weather_icon: str
     wind_speed: float
-    wind_deg: Optional[int]
+    wind_deg: Optional[int] = None
     clouds: int
     pop: float
 

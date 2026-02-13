@@ -51,6 +51,15 @@ class Database:
         
         conn = self.connect()
         conn.executescript(schema_sql)
+        # Backward-compatible migration for existing databases.
+        columns = {
+            row["name"]
+            for row in conn.execute("PRAGMA table_info(locations)").fetchall()
+        }
+        if "is_deleted" not in columns:
+            conn.execute(
+                "ALTER TABLE locations ADD COLUMN is_deleted BOOLEAN DEFAULT 0"
+            )
         conn.commit()
     
     def execute(self, query: str, params: tuple = ()):

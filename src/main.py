@@ -14,7 +14,7 @@ from src.db.database import get_db, Database
 from src.schemas.weather import (
     Location, LocationCreate, LocationUpdate, 
     WeatherSnapshot, ForecastItem, WeatherData,
-    Preference, PreferenceUpdate
+    Preference, PreferenceUpdate, LocationSearchResult
 )
 from src.api.weather_client import WeatherAPIClient
 from src.services.weather_service import WeatherService
@@ -69,6 +69,17 @@ async def create_location(
 @app.get("/locations", response_model=List[Location])
 async def get_locations(service: WeatherService = Depends(get_weather_service)):
     return service.get_all_locations()
+
+@app.get("/locations/search", response_model=List[LocationSearchResult])
+async def search_locations(
+    q: str = Query(..., min_length=2, description="City name search query"),
+    country: Optional[str] = Query(None, description="Optional country code"),
+    service: WeatherService = Depends(get_weather_service),
+):
+    try:
+        return await service.search_locations(q, country)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.get("/locations/{location_id}", response_model=Location)
 async def get_location(
