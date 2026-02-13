@@ -71,4 +71,36 @@ A modern, full-stack weather application that integrates with OpenWeatherMap API
   - `schemas/`: Data validation and serialization.
   - `main.py`: Route definitions and app initialization.
 - **Frontend State**: Managed with React hooks for simplicity and performance.
+## Assumptions
 
+### Technical Assumptions
+- **Single User Environment**: The application is designed for local/personal use. No authentication, multi-tenancy, or concurrent user access management is implemented.
+- **Network Connectivity**: Assumes stable internet connection for API calls to OpenWeatherMap. The app does not implement offline mode or request queuing.
+- **API Rate Limits**: OpenWeatherMap free tier allows 1,000 calls/day. The app assumes manual sync triggers and does not implement automatic background refresh or rate limit handling.
+- **Development Environment**: The application runs in development mode (`npm run dev` for frontend, direct Python execution for backend). Production deployment requires separate configuration.
+- **Local Storage**: SQLite database (`weather.db`) is stored locally. No cloud backup, replication, or distributed database features are implemented.
+
+### Operational Assumptions
+- **Manual Synchronization**: Weather data is only updated when the user explicitly clicks "Request Sync" or "Initialize Satellite Link". There is no automatic refresh mechanism.
+- **Data Staleness**: Cached weather data in the database may become outdated. The UI shows "Last Synced" timestamp, but doesn't warn users about stale data.
+- **Error Recovery**: Failed API calls display error alerts but don't retry automatically. Users must manually trigger sync again.
+- **Browser Compatibility**: Frontend assumes modern browsers with ES6+ support. No polyfills for legacy browser compatibility are included.
+- **Port Availability**: Backend assumes port 8000 is available, frontend assumes port 5173. No dynamic port assignment is implemented.
+
+### Design Assumptions
+- **Aesthetic Over Automation**: The "NYC Terminal" theme uses technical jargon ("nodes", "PlanetNexus", "satellite sync") purely for visual appeal. These terms don't reflect actual system architecture.
+- **Decorative UI Elements**: Labels like "Orbital Refresh: 10hz", "Frame: 00492-AX", and "WGS84" are static text for aesthetic purposes and don't indicate real functionality.
+- **Minimal Validation**: City names are passed directly to OpenWeatherMap API. Invalid entries show error alerts but don't provide input validation or suggestions.
+- **No User Preferences Persistence**: UI theme (dark/light mode) and layout preferences are not saved. Only temperature units (metric/imperial) are persisted in the database.
+
+### Data Management Assumptions
+- **No Data Retention Limits**: Weather snapshots accumulate indefinitely in the database. No automatic cleanup or archival mechanism exists.
+- **Forecast Overwrite**: Each sync deletes all previous forecast data for that location and replaces it with fresh data. Historical forecasts are not preserved.
+- **Coordinate Precision**: Uses OpenWeatherMap's coordinate resolution. Multiple cities with similar coordinates may show identical weather data.
+- **Timezone Handling**: All timestamps are stored as UTC. The frontend displays times in the user's local timezone without explicit timezone indicators.
+
+### Security Assumptions
+- **API Key Exposure**: The `.env` file stores the OpenWeatherMap API key in plain text. This is acceptable for local development but not secure for production deployment.
+- **No Input Sanitization**: Location names and user inputs are not sanitized for SQL injection (mitigated by using parameterized queries) or XSS attacks.
+- **CORS Configuration**: The frontend dev server proxies API requests to avoid CORS issues. Production deployment requires proper CORS headers or reverse proxy configuration.
+- **No HTTPS**: Both frontend and backend run on HTTP (localhost). Assumes local development environment without SSL/TLS requirements.
