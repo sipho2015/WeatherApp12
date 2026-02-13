@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity,
+  AlertTriangle,
   Cloud,
   CloudLightning,
   CloudRain,
@@ -10,8 +11,10 @@ import {
   RefreshCw,
   Search,
   Settings,
+  ShieldAlert,
   Star,
   Sun,
+  Timer,
   Moon,
   Trash2,
   Wind
@@ -21,6 +24,7 @@ import type { Location, LocationSearchResult, WeatherData } from './types/weathe
 import './index.css'
 
 function App() {
+  const DEGREE_SYMBOL = '\u00B0'
   const [locations, setLocations] = useState<Location[]>([])
   const [selectedLocation, setSelectedLocation] = useState<WeatherData | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -277,6 +281,7 @@ function App() {
     () => activeData?.forecast?.filter((_, i) => i % 8 === 0).slice(0, 5) || [],
     [activeData]
   )
+  const insights = activeData?.insights || null
 
   const graphTemps = dailyForecast.map(item => Math.round(item.temperature))
   const maxTemp = graphTemps.length ? Math.max(...graphTemps) : 0
@@ -398,6 +403,9 @@ function App() {
             <div className="meta">
               <p className="city">{activeData?.location?.display_name || 'Weather Dashboard'}</p>
               <p className="date">{format(new Date(), 'EEEE, MMMM d')}</p>
+              <p className="date">
+                Last updated: {activeData?.last_synced ? format(new Date(activeData.last_synced), 'MMM d, HH:mm') : 'Not synced yet'}
+              </p>
             </div>
 
             <div className="actions">
@@ -467,8 +475,8 @@ function App() {
             <section className="settings-panel glass-soft">
               <p className="status-title">Units</p>
               <select value={preferences.units} onChange={e => handleUpdatePreference('units', e.target.value)}>
-                <option value="metric">Metric (°C)</option>
-                <option value="imperial">Imperial (°F)</option>
+                <option value="metric">Metric (C)</option>
+                <option value="imperial">Imperial (F)</option>
               </select>
             </section>
           )}
@@ -488,12 +496,12 @@ function App() {
               </div>
               <div className="hero-copy">
                 <div className="temp-line">
-                  <p className="temp-main">{Math.round(activeData.current.temperature)}°</p>
-                  <p className="temp-small">{Math.round(activeData.current.feels_like)}°</p>
+                  <p className="temp-main">{Math.round(activeData.current.temperature)}{DEGREE_SYMBOL}</p>
+                  <p className="temp-small">{Math.round(activeData.current.feels_like)}{DEGREE_SYMBOL}</p>
                 </div>
                 <div className="temp-badges">
-                  <span className="badge">H: {maxTemp || Math.round(activeData.current.temperature)}°</span>
-                  <span className="badge">L: {minTemp || Math.round(activeData.current.temperature)}°</span>
+                  <span className="badge">H: {maxTemp || Math.round(activeData.current.temperature)}{DEGREE_SYMBOL}</span>
+                  <span className="badge">L: {minTemp || Math.round(activeData.current.temperature)}{DEGREE_SYMBOL}</span>
                 </div>
                 <p className="summary">{activeData.current.weather_description || activeData.current.weather_main}</p>
               </div>
@@ -538,7 +546,7 @@ function App() {
                 <div key={item.forecast_timestamp} className={`day ${index === 1 ? 'active' : ''}`}>
                   <p className="day-name">{format(new Date(item.forecast_timestamp * 1000), 'EEEE')}</p>
                   <p className="day-weather">{item.weather_main}</p>
-                  <p className="day-temp">{Math.round(item.temperature)}°</p>
+                  <p className="day-temp">{Math.round(item.temperature)}{DEGREE_SYMBOL}</p>
                 </div>
               ))}
             </div>
@@ -578,3 +586,4 @@ function App() {
 }
 
 export default App
+

@@ -123,11 +123,13 @@ async def sync_weather(
             raise HTTPException(status_code=404, detail="Location record missing after sync")
             
         last_synced = service.get_last_sync_time(location_id)
+        insights = service.build_weather_insights(location_id, current, forecast)
         return WeatherData(
             location=location,
             current=current,
             forecast=forecast,
-            last_synced=last_synced
+            last_synced=last_synced,
+            insights=insights
         )
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -149,12 +151,14 @@ async def get_weather_data(
     current = service.get_latest_weather(location_id)
     forecast = service.get_forecast(location_id)
     last_synced = service.get_last_sync_time(location_id)
+    insights = service.build_weather_insights(location_id, current, forecast)
     
     return WeatherData(
         location=location,
         current=current,
         forecast=forecast,
-        last_synced=last_synced
+        last_synced=last_synced,
+        insights=insights
     )
 
 @app.get("/preferences", response_model=List[Preference])

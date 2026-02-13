@@ -67,11 +67,43 @@ class ForecastItem(BaseModel):
     clouds: int
     pop: float
 
+class ForecastConfidence(BaseModel):
+    label: str
+    score: int
+    reason: str
+
+class DailyImpactScores(BaseModel):
+    commute: int
+    outdoor: int
+    laundry: int
+    running: int
+
+class InsightTimelineEvent(BaseModel):
+    timestamp: int
+    title: str
+    severity: str
+    detail: str
+
+class ForecastChangeSummary(BaseModel):
+    headline: str
+    temperature_delta: float
+    rain_delta: float
+    wind_delta: float
+
+class WeatherInsights(BaseModel):
+    briefing: str
+    confidence: List[ForecastConfidence]
+    impact_scores: DailyImpactScores
+    timeline: List[InsightTimelineEvent]
+    alerts: List[str]
+    change_summary: Optional[ForecastChangeSummary] = None
+
 class WeatherData(BaseModel):
     location: Location
     current: Optional[WeatherSnapshot] = None
     forecast: Optional[List[ForecastItem]] = None
     last_synced: Optional[datetime] = None
+    insights: Optional[WeatherInsights] = None
 
 class Preference(BaseModel):
     key: str

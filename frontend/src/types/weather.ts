@@ -54,9 +54,46 @@ export interface ForecastItem {
     pop: number;
 }
 
+export interface ForecastConfidence {
+    label: string;
+    score: number;
+    reason: string;
+}
+
+export interface DailyImpactScores {
+    commute: number;
+    outdoor: number;
+    laundry: number;
+    running: number;
+}
+
+export interface InsightTimelineEvent {
+    timestamp: number;
+    title: string;
+    severity: string;
+    detail: string;
+}
+
+export interface ForecastChangeSummary {
+    headline: string;
+    temperature_delta: number;
+    rain_delta: number;
+    wind_delta: number;
+}
+
+export interface WeatherInsights {
+    briefing: string;
+    confidence: ForecastConfidence[];
+    impact_scores: DailyImpactScores;
+    timeline: InsightTimelineEvent[];
+    alerts: string[];
+    change_summary: ForecastChangeSummary | null;
+}
+
 export interface WeatherData {
     location: Location;
     current: WeatherSnapshot | null;
     forecast: ForecastItem[] | null;
     last_synced: string | null;
+    insights: WeatherInsights | null;
 }
