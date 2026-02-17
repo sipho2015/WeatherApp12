@@ -1,5 +1,8 @@
 from typing import List, Optional, Tuple
-from datetime import datetime
+from datetime import datetime, timedelta
+import logging
+import os
+import pycountry
 from src.db.database import Database
 from src.schemas.weather import (
     Location,
@@ -13,8 +16,12 @@ from src.schemas.weather import (
     DailyImpactScores,
     InsightTimelineEvent,
     ForecastChangeSummary,
+    LocationWeatherOverview,
+    SystemStatus,
 )
 from src.api.weather_client import WeatherAPIClient
+
+logger = logging.getLogger(__name__)
 
 class WeatherService:
     def __init__(self, db: Database, api_client: WeatherAPIClient):
@@ -55,7 +62,12 @@ class WeatherService:
                 "SELECT * FROM locations WHERE id = ? AND is_deleted = 0",
                 (existing["id"],),
             ).fetchone()
-            return Location(**dict(row))
+            location = Location(**dict(row))
+            try:
+                await self.sync_weather(location.id, force=True)
+            except Exception as exc:
+                logger.warning("Auto-sync failed for location %s: %s", location.id, exc)
+            return location
 
         # 3. Store new location
         query = """
@@ -66,9 +78,19 @@ class WeatherService:
         cursor = self.db.execute(query, (name, country, lat, lon, name))
         row = cursor.fetchone()
         self.db.commit()
-        return Location(**dict(row))
+        location = Location(**dict(row))
+        try:
+            await self.sync_weather(location.id, force=True)
+        except Exception as exc:
+            logger.warning("Auto-sync failed for location %s: %s", location.id, exc)
+        return location
 
     async def search_locations(self, query: str, country: Optional[str] = None) -> List[LocationSearchResult]:
+        # Guard: if user entered a country name/code without a specific city query,
+        # return no results to avoid misleading geo matches from global dataset.
+        if self._looks_like_country_only_query(query):
+            return []
+
         geo_results = await self.api_client.get_location_coords(query, country)
         results: List[LocationSearchResult] = []
         for item in geo_results:
@@ -88,6 +110,20 @@ class WeatherService:
             )
         return results
 
+    def _looks_like_country_only_query(self, query: str) -> bool:
+        q = query.strip().lower()
+        if len(q) < 2:
+            return False
+
+        for country in pycountry.countries:
+            name = getattr(country, "name", "").strip().lower()
+            official = getattr(country, "official_name", "").strip().lower()
+            alpha2 = getattr(country, "alpha_2", "").strip().lower()
+            alpha3 = getattr(country, "alpha_3", "").strip().lower()
+            if q in {name, official, alpha2, alpha3}:
+                return True
+        return False
+
     def get_all_locations(self) -> List[Location]:
         cursor = self.db.execute(
             "SELECT * FROM locations WHERE is_deleted = 0 ORDER BY is_favorite DESC, name ASC"
@@ -101,6 +137,79 @@ class WeatherService:
         )
         row = cursor.fetchone()
         return Location(**dict(row)) if row else None
+
+    def get_locations_overview(self) -> List[LocationWeatherOverview]:
+        locations = self.get_all_locations()
+        output: List[LocationWeatherOverview] = []
+        for location in locations:
+            output.append(
+                LocationWeatherOverview(
+                    location=location,
+                    current=self.get_latest_weather(location.id),
+                    last_synced=self.get_last_sync_time(location.id),
+                )
+            )
+        return output
+
+    def get_system_status(self) -> SystemStatus:
+        total_locations_row = self.db.execute(
+            "SELECT COUNT(*) AS count FROM locations WHERE is_deleted = 0"
+        ).fetchone()
+        total_locations = int(total_locations_row["count"]) if total_locations_row else 0
+
+        synced_locations_row = self.db.execute(
+            """
+            SELECT COUNT(DISTINCT ws.location_id) AS count
+            FROM weather_snapshots ws
+            JOIN locations l ON l.id = ws.location_id
+            WHERE l.is_deleted = 0
+            """
+        ).fetchone()
+        synced_locations = int(synced_locations_row["count"]) if synced_locations_row else 0
+
+        failed_24h_row = self.db.execute(
+            """
+            SELECT COUNT(*) AS count
+            FROM sync_history
+            WHERE status = 'failed'
+              AND synced_at >= datetime('now', '-1 day')
+            """
+        ).fetchone()
+        failed_sync_last_24h = int(failed_24h_row["count"]) if failed_24h_row else 0
+
+        last_success = self.db.execute(
+            """
+            SELECT synced_at
+            FROM sync_history
+            WHERE status = 'success'
+            ORDER BY synced_at DESC
+            LIMIT 1
+            """
+        ).fetchone()
+        last_success_sync = None
+        if last_success:
+            try:
+                value = last_success["synced_at"]
+                if isinstance(value, datetime):
+                    last_success_sync = value
+                elif isinstance(value, str):
+                    last_success_sync = datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+            except Exception:
+                last_success_sync = None
+
+        return SystemStatus(
+            total_locations=total_locations,
+            synced_locations=synced_locations,
+            failed_sync_last_24h=failed_sync_last_24h,
+            last_success_sync=last_success_sync,
+            sync_interval_seconds=self._sync_cache_age_seconds(),
+            api_configured=bool(
+                (getattr(self.api_client, "api_key", None) or os.getenv("OPENWEATHER_API_KEY", ""))
+                .strip()
+                .strip('"')
+                .strip("'")
+            ),
+        )
 
     def update_location(self, location_id: int, update_data: LocationUpdate) -> Optional[Location]:
         updates = []
@@ -143,27 +252,35 @@ class WeatherService:
         self.db.commit()
         return cursor.rowcount > 0
 
-    async def sync_weather(self, location_id: int) -> Tuple[WeatherSnapshot, List[ForecastItem]]:
+    async def sync_weather(
+        self,
+        location_id: int,
+        force: bool = False,
+    ) -> Tuple[WeatherSnapshot, List[ForecastItem], Optional[str]]:
         location = self.get_location(location_id)
         if not location:
             raise ValueError("Location not found")
-        
-        # Get units preference
-        cursor = self.db.execute("SELECT value FROM user_preferences WHERE key = 'units'")
-        row = cursor.fetchone()
-        # row may be a dict-like object; guard against missing 'value' key
-        units = "metric"
-        if row:
-            try:
-                units = row["value"]
-            except Exception:
-                # fallback to default if structure is unexpected
-                units = str(row) if isinstance(row, str) else units
+
+        units = self._get_preference_value("units", "metric")
+        cache_age_seconds = self._sync_cache_age_seconds()
+        last_sync = self.get_last_sync_time(location_id)
+        is_cache_fresh = (
+            not force
+            and last_sync is not None
+            and datetime.utcnow() - last_sync < timedelta(seconds=cache_age_seconds)
+        )
+        if is_cache_fresh:
+            current_cached = self.get_latest_weather(location_id)
+            forecast_cached = self.get_forecast(location_id)
+            if current_cached and forecast_cached:
+                return current_cached, forecast_cached, "Used cached weather data to reduce API calls."
         
         try:
+            previous_current = self.get_latest_weather(location_id)
             # Fetch current and forecast
             current = await self.api_client.get_current_weather(location.latitude, location.longitude, units=units)
             forecast = await self.api_client.get_forecast(location.latitude, location.longitude, units=units)
+            sync_note = self._detect_conflict_note(previous_current, current)
             
             # Store current weather
             self.db.execute("""
@@ -198,12 +315,12 @@ class WeatherService:
             
             # Record sync history
             self.db.execute("""
-                INSERT INTO sync_history (location_id, sync_type, status)
-                VALUES (?, 'all', 'success')
-            """, (location_id,))
+                INSERT INTO sync_history (location_id, sync_type, status, error_message)
+                VALUES (?, 'all', 'success', ?)
+            """, (location_id, sync_note))
             
             self.db.commit()
-            return current, forecast
+            return current, forecast, sync_note
             
         except Exception as e:
             self.db.execute("""
@@ -212,6 +329,24 @@ class WeatherService:
             """, (location_id, str(e)))
             self.db.commit()
             raise e
+
+    def _detect_conflict_note(
+        self,
+        previous_current: Optional[WeatherSnapshot],
+        next_current: WeatherSnapshot,
+    ) -> Optional[str]:
+        if not previous_current:
+            return None
+
+        temp_delta = abs(next_current.temperature - previous_current.temperature)
+        wind_delta = abs(next_current.wind_speed - previous_current.wind_speed)
+        weather_changed = next_current.weather_main.lower() != previous_current.weather_main.lower()
+        if temp_delta >= 10 or wind_delta >= 10 or weather_changed:
+            return (
+                "Significant data shift detected; latest API response applied "
+                "as source of truth."
+            )
+        return None
 
     def get_latest_weather(self, location_id: int) -> Optional[WeatherSnapshot]:
         cursor = self.db.execute("""
@@ -243,6 +378,69 @@ class WeatherService:
         """, (location_id,))
         return [ForecastItem(**dict(row)) for row in cursor.fetchall()]
 
+    def _get_weather_history_from_db(self, location_id: int, days: int = 5) -> List[WeatherSnapshot]:
+        cursor = self.db.execute(
+            """
+            SELECT
+                temperature, feels_like, temp_min, temp_max, pressure, humidity,
+                weather_main, weather_description, weather_icon, wind_speed, wind_deg,
+                clouds, visibility, api_timestamp, timestamp
+            FROM weather_snapshots
+            WHERE location_id = ?
+              AND timestamp >= datetime('now', ?)
+            ORDER BY timestamp DESC
+            """,
+            (location_id, f"-{days} days"),
+        )
+        return [WeatherSnapshot(**dict(row)) for row in cursor.fetchall()]
+
+    async def get_weather_history(
+        self,
+        location_id: int,
+        days: int = 5,
+        prefer_api: bool = True
+    ) -> Tuple[List[WeatherSnapshot], str]:
+        if prefer_api:
+            location = self.get_location(location_id)
+            if location:
+                units = self._get_preference_value("units", "metric")
+                try:
+                    api_history = await self.api_client.get_historical_weather(
+                        location.latitude,
+                        location.longitude,
+                        days=days,
+                        units=units,
+                    )
+                    if api_history:
+                        return api_history, "api"
+                except Exception as exc:
+                    logger.warning(
+                        "Historical API fetch failed for location %s, falling back to local snapshots: %s",
+                        location_id,
+                        exc,
+                    )
+        return self._get_weather_history_from_db(location_id, days=days), "local"
+
+    def export_location_data(self, location_id: int, history_days: int = 30) -> dict:
+        location = self.get_location(location_id)
+        if not location:
+            raise ValueError("Location not found")
+
+        current = self.get_latest_weather(location_id)
+        forecast = self.get_forecast(location_id)
+        history = self._get_weather_history_from_db(location_id, days=history_days)
+        last_synced = self.get_last_sync_time(location_id)
+        sync_note = self.get_last_sync_note(location_id)
+
+        return {
+            "location": location.model_dump(),
+            "current": current.model_dump() if current else None,
+            "forecast": [item.model_dump() for item in forecast],
+            "history": [item.model_dump() for item in history],
+            "last_synced": last_synced.isoformat() if last_synced else None,
+            "sync_note": sync_note,
+        }
+
     def get_last_sync_time(self, location_id: int) -> Optional[datetime]:
         cursor = self.db.execute("""
             SELECT synced_at FROM sync_history 
@@ -250,7 +448,35 @@ class WeatherService:
             ORDER BY synced_at DESC LIMIT 1
         """, (location_id,))
         row = cursor.fetchone()
-        return row["synced_at"] if row else None
+        if not row:
+            return None
+        try:
+            value = row["synced_at"]
+            if isinstance(value, datetime):
+                return value
+            if isinstance(value, str):
+                # SQLite can return text timestamps depending on driver parsing.
+                return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
+            return None
+        except Exception:
+            return None
+
+    def get_last_sync_note(self, location_id: int) -> Optional[str]:
+        cursor = self.db.execute(
+            """
+            SELECT error_message FROM sync_history
+            WHERE location_id = ? AND status = 'success'
+            ORDER BY synced_at DESC LIMIT 1
+            """,
+            (location_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return None
+        try:
+            return row["error_message"] if row["error_message"] else None
+        except Exception:
+            return None
 
     def get_preferences(self) -> List[dict]:
         cursor = self.db.execute("SELECT key, value FROM user_preferences")
@@ -262,6 +488,26 @@ class WeatherService:
             (value, key)
         )
         self.db.commit()
+
+    def _get_preference_value(self, key: str, fallback: str) -> str:
+        cursor = self.db.execute("SELECT value FROM user_preferences WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        if row:
+            try:
+                value = row["value"]
+                if value is not None:
+                    return str(value)
+            except Exception:
+                pass
+        return fallback
+
+    def _sync_cache_age_seconds(self) -> int:
+        refresh_interval = self._get_preference_value("refresh_interval", "600")
+        try:
+            parsed = int(refresh_interval)
+        except ValueError:
+            parsed = 600
+        return max(60, parsed)
 
     def build_weather_insights(
         self,

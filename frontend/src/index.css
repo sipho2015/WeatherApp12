@@ -169,6 +169,11 @@ body {
   padding: 18px;
 }
 
+.status-refresh-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
 .status-head {
   display: flex;
   align-items: center;
@@ -275,9 +280,14 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: none;
   padding: 10px;
   border-radius: 14px;
   border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-main);
   cursor: pointer;
   transition: all 220ms ease;
 }
@@ -309,6 +319,12 @@ body {
   margin-top: 2px;
   font-size: 11px;
   color: var(--text-dim);
+}
+
+.loc-weather-meta {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-subtle);
 }
 
 .loc-actions {
@@ -515,6 +531,34 @@ body {
   gap: 12px;
 }
 
+.add-location-panel {
+  padding: 14px 16px;
+}
+
+.add-location-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.add-location-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.add-location-grid input,
+.add-location-grid select {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-main);
+  padding: 8px 10px;
+}
+
 .settings-panel select {
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 10px;
@@ -620,11 +664,54 @@ body {
   padding: 18px 20px 20px;
 }
 
+.tracked-cities-panel {
+  padding: 16px 18px;
+}
+
+.tracked-cities-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.tracked-city-card {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tracked-city-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tracked-city-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.tracked-city-actions {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
 .forecast-title {
   font-size: 14px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-dim);
+}
+
+.forecast-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .chart-wrap {
@@ -684,6 +771,158 @@ body {
 .day-temp {
   font-size: 13px;
   color: rgba(241, 245, 249, 0.92);
+}
+
+.forecast-cards {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.forecast-card {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.forecast-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.forecast-card-day {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.forecast-card-date {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.forecast-card-summary {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-subtle);
+  text-transform: capitalize;
+}
+
+.forecast-card-temp {
+  margin-top: 10px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.forecast-card-stats {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.metric-row {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-subtle);
+}
+
+.metric-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.metric-bar div {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #22d3ee);
+}
+
+.history-sync-btn {
+  margin-top: 10px;
+}
+
+.history-panel {
+  padding: 18px 20px 20px;
+}
+
+.history-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.history-card {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.history-time {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.history-temp {
+  margin-top: 8px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.history-desc {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-subtle);
+  text-transform: capitalize;
+}
+
+.history-meta {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.history-empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  color: var(--text-dim);
+  font-size: 13px;
+  grid-column: 1 / -1;
+}
+
+.error-banner {
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.2);
+}
+
+.error-banner p {
+  font-size: 13px;
+  color: #fecaca;
+}
+
+.status-banner {
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  background: rgba(20, 83, 45, 0.25);
+}
+
+.status-banner p {
+  font-size: 13px;
+  color: #bbf7d0;
 }
 
 .footer-row {
@@ -835,6 +1074,22 @@ body {
 
   .week-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .tracked-cities-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-location-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .forecast-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .history-grid {
+    grid-template-columns: 1fr;
   }
 
   .footer-row {

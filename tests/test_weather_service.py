@@ -70,9 +70,11 @@ async def test_sync_weather(mock_db, mock_api_client):
         display_name="London", is_favorite=False, 
         created_at=datetime.now(), updated_at=datetime.now()
     ))
+    service.get_latest_weather = MagicMock(return_value=None)
     
-    current, forecast = await service.sync_weather(1)
+    current, forecast, sync_note = await service.sync_weather(1, force=True)
     
     assert current.temperature == 15.0
     assert len(forecast) == 0
+    assert sync_note is None
     assert mock_db.commit.called

@@ -96,4 +96,20 @@ export interface WeatherData {
     forecast: ForecastItem[] | null;
     last_synced: string | null;
     insights: WeatherInsights | null;
+    sync_note?: string | null;
+}
+
+export interface LocationWeatherOverview {
+    location: Location;
+    current: WeatherSnapshot | null;
+    last_synced: string | null;
+}
+
+export interface SystemStatus {
+    total_locations: number;
+    synced_locations: number;
+    failed_sync_last_24h: number;
+    last_success_sync: string | null;
+    sync_interval_seconds: number;
+    api_configured: boolean;
 }

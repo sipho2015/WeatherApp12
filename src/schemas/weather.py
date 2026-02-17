@@ -104,6 +104,20 @@ class WeatherData(BaseModel):
     forecast: Optional[List[ForecastItem]] = None
     last_synced: Optional[datetime] = None
     insights: Optional[WeatherInsights] = None
+    sync_note: Optional[str] = None
+
+class LocationWeatherOverview(BaseModel):
+    location: Location
+    current: Optional[WeatherSnapshot] = None
+    last_synced: Optional[datetime] = None
+
+class SystemStatus(BaseModel):
+    total_locations: int
+    synced_locations: int
+    failed_sync_last_24h: int
+    last_success_sync: Optional[datetime] = None
+    sync_interval_seconds: int
+    api_configured: bool
 
 class Preference(BaseModel):
     key: str

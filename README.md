@@ -7,9 +7,10 @@ A modern, full-stack weather application that integrates with OpenWeatherMap API
 - **API Integration**: Fetches real-time weather and 5-day forecasts.
 - **Local Persistence**: SQLite database for storing locations, historical snapshots, and preferences.
 - **CRUD Operations**: Full management of tracked cities (Add, View, Update, Delete).
-- **Modern UI**: Responsive React frontend with a premium aesthetic.
-- **Data Sync**: On-demand synchronization with timestamps and history tracking.
-- **Error Handling**: Graceful management of API limits and invalid data.
+- **Modern UI**: Responsive React frontend with mobile-friendly layout and accessibility improvements.
+- **Data Sync**: Auto-sync on city add, on-demand sync, and periodic background sync with timestamps/history.
+- **Caching + Conflict Handling**: Cache-aware sync to reduce API calls and conflict-note tracking when large data shifts are detected.
+- **API Safety**: Endpoint rate limiting and structured error handling for API/network/database failures.
 
 ## Tech Stack
 
@@ -76,14 +77,14 @@ A modern, full-stack weather application that integrates with OpenWeatherMap API
 ### Technical Assumptions
 - **Single User Environment**: The application is designed for local/personal use. No authentication, multi-tenancy, or concurrent user access management is implemented.
 - **Network Connectivity**: Assumes stable internet connection for API calls to OpenWeatherMap. The app does not implement offline mode or request queuing.
-- **API Rate Limits**: OpenWeatherMap free tier allows 1,000 calls/day. The app assumes manual sync triggers and does not implement automatic background refresh or rate limit handling.
+- **API Rate Limits**: OpenWeatherMap free tier still applies, but the app minimizes calls with cache-aware sync and also rate-limits incoming app requests.
 - **Development Environment**: The application runs in development mode (`npm run dev` for frontend, direct Python execution for backend). Production deployment requires separate configuration.
 - **Local Storage**: SQLite database (`weather.db`) is stored locally. No cloud backup, replication, or distributed database features are implemented.
 
 ### Operational Assumptions
-- **Manual Synchronization**: Weather data is only updated when the user explicitly clicks "Request Sync" or "Initialize Satellite Link". There is no automatic refresh mechanism.
+- **Synchronization Model**: Weather data can refresh on demand, on city creation, and periodically in the background based on `refresh_interval`.
 - **Data Staleness**: Cached weather data in the database may become outdated. The UI shows "Last Synced" timestamp, but doesn't warn users about stale data.
-- **Error Recovery**: Failed API calls display error alerts but don't retry automatically. Users must manually trigger sync again.
+- **Error Recovery**: Failures are caught and surfaced with endpoint-safe responses; users can manually retry sync from the UI.
 - **Browser Compatibility**: Frontend assumes modern browsers with ES6+ support. No polyfills for legacy browser compatibility are included.
 - **Port Availability**: Backend assumes port 8000 is available, frontend assumes port 5173. No dynamic port assignment is implemented.
 
