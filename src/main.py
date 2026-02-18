@@ -127,6 +127,14 @@ async def rate_limit_middleware(request: Request, call_next):
     bucket.append(now)
     return await call_next(request)
 
+@app.get("/")
+async def root():
+    return {
+        "message": "Weather Data Integration Platform API",
+        "docs": "/docs",
+        "openapi": "/openapi.json",
+    }
+
 
 @app.post("/locations", response_model=Location)
 async def create_location(
